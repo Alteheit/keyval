@@ -13,8 +13,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 
 	"golang.org/x/crypto/argon2"
+	"golang.org/x/term"
 )
 
 const (
@@ -35,6 +37,31 @@ func dispatcher() {
 	if mainCommand == "set" {
 		dataKey := os.Args[2]
 		dataValue := os.Args[3]
+		content := readDb()
+		dbData := unmarshalDb(content)
+		decryptedData := make(map[string]string)
+		for k, v := range dbData {
+			decryptedKey := decrypt(k, key)
+			decryptedValue := decrypt(v, key)
+			decryptedData[decryptedKey] = decryptedValue
+		}
+		decryptedData[dataKey] = dataValue
+		encryptedData := make(map[string]string)
+		for k, v := range decryptedData {
+			encryptedKey := encrypt(k, key)
+			encryptedValue := encrypt(v, key)
+			encryptedData[encryptedKey] = encryptedValue
+		}
+		content = marshalDb(encryptedData)
+		writeDb(content)
+	} else if mainCommand == "sset" {
+		dataKey := os.Args[2]
+		fmt.Print("Sensitive value: ")
+		bytepw, err := term.ReadPassword(int(syscall.Stdin))
+		if err != nil {
+			log.Fatal(err)
+		}
+		dataValue := string(bytepw)
 		content := readDb()
 		dbData := unmarshalDb(content)
 		decryptedData := make(map[string]string)

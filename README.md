@@ -23,6 +23,13 @@ To set a value:
 keyval set your-key your-value
 ```
 
+To _secretly_ set a value:
+
+```shell
+keyval sset your-key
+# You will then be prompted for a secret value
+```
+
 To get a value:
 
 ```shell
