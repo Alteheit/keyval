@@ -26,10 +26,6 @@ const (
 )
 
 func main() {
-	test()
-}
-
-func test() {
 	dispatcher()
 }
 
@@ -105,15 +101,6 @@ func dispatcher() {
 			writeDb(content)
 		}
 	}
-}
-
-func testDb() {
-	writeDb("")
-	content := readDb()
-	dbData := unmarshalDb(content)
-	dbData["foo"] = "bar"
-	content = marshalDb(dbData)
-	fmt.Println(content)
 }
 
 func marshalDb(data map[string]string) string {
