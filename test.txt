@@ -1,4 +1,0 @@
-hi
-hello
-from
-a file
