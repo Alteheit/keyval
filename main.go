@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -31,12 +32,86 @@ func main() {
 	dispatcher()
 }
 
+func printHelp() {
+	fmt.Println("keyval local database")
+	fmt.Println("")
+	fmt.Println("Usage:")
+	fmt.Println("- keyval set {keyName} {keyValue}: set a key-value pair")
+	fmt.Println("- keyval sset {keyName}: set a sensitive key-value pair; prompts for a secret at the terminal")
+	fmt.Println("- keyval fset {fileName}: set a key-value pair, where the value is the content of a file")
+	fmt.Println("- some-command | keyval set your-key: set a key-value pair, where the value is from stdin")
+	fmt.Println("- keyval get {keyName}: print a value from a key")
+	fmt.Println("- keyval list: list available keys")
+	fmt.Println("- keyval list {prefix}: list available keys with a given prefix")
+	fmt.Println("- keyval delete {keyname}: delete a key-value pair")
+	fmt.Println("- keyval help: display this message")
+}
+
 func dispatcher() {
+	if len(os.Args) == 1 {
+		printHelp()
+		return
+	}
 	mainCommand := os.Args[1]
 	key := readKeyFromEnvironment()
 	if mainCommand == "set" {
+		// Is this a normal set or a stdin set?
+		// A normal set will have len(os.Args) == 4, stdin set will have len(os.Args) == 3
+		if len(os.Args) == 4 {
+			dataKey := os.Args[2]
+			dataValue := os.Args[3]
+			content := readDb()
+			dbData := unmarshalDb(content)
+			decryptedData := make(map[string]string)
+			for k, v := range dbData {
+				decryptedKey := decrypt(k, key)
+				decryptedValue := decrypt(v, key)
+				decryptedData[decryptedKey] = decryptedValue
+			}
+			decryptedData[dataKey] = dataValue
+			encryptedData := make(map[string]string)
+			for k, v := range decryptedData {
+				encryptedKey := encrypt(k, key)
+				encryptedValue := encrypt(v, key)
+				encryptedData[encryptedKey] = encryptedValue
+			}
+			content = marshalDb(encryptedData)
+			writeDb(content)
+		} else if len(os.Args) == 3 {
+			scanner := bufio.NewScanner(os.Stdin)
+			lines := []string{}
+			for scanner.Scan() {
+				line := scanner.Text()
+				lines = append(lines, line)
+			}
+			if err := scanner.Err(); err != nil {
+				log.Fatal(err)
+			}
+			dataValue := strings.Join(lines, "\n")
+			dataKey := os.Args[2]
+			content := readDb()
+			dbData := unmarshalDb(content)
+			decryptedData := make(map[string]string)
+			for k, v := range dbData {
+				decryptedKey := decrypt(k, key)
+				decryptedValue := decrypt(v, key)
+				decryptedData[decryptedKey] = decryptedValue
+			}
+			decryptedData[dataKey] = dataValue
+			encryptedData := make(map[string]string)
+			for k, v := range decryptedData {
+				encryptedKey := encrypt(k, key)
+				encryptedValue := encrypt(v, key)
+				encryptedData[encryptedKey] = encryptedValue
+			}
+			content = marshalDb(encryptedData)
+			writeDb(content)
+		}
+	} else if mainCommand == "help" {
+		printHelp()
+	} else if mainCommand == "fset" {
 		dataKey := os.Args[2]
-		dataValue := os.Args[3]
+		dataFilePath := os.Args[3]
 		content := readDb()
 		dbData := unmarshalDb(content)
 		decryptedData := make(map[string]string)
@@ -45,7 +120,19 @@ func dispatcher() {
 			decryptedValue := decrypt(v, key)
 			decryptedData[decryptedKey] = decryptedValue
 		}
-		decryptedData[dataKey] = dataValue
+		// Read the given file
+		file, err := os.Open(dataFilePath)
+		if err != nil {
+			log.Fatal(err)
+		}
+		b, err := io.ReadAll(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		// Attempt to cast contents to string
+		fileStringContents := string(b)
+		// Do not trim trailing newlines
+		decryptedData[dataKey] = fileStringContents
 		encryptedData := make(map[string]string)
 		for k, v := range decryptedData {
 			encryptedKey := encrypt(k, key)
@@ -89,7 +176,10 @@ func dispatcher() {
 			decryptedValue := decrypt(v, key)
 			decryptedData[decryptedKey] = decryptedValue
 		}
-		fmt.Println(decryptedData[dataKey])
+		stringToPrint := decryptedData[dataKey]
+		// Trim trailing newlines
+		stringToPrint = strings.Trim(stringToPrint, "\n")
+		fmt.Println(stringToPrint)
 	} else if mainCommand == "list" {
 		content := readDb()
 		dbData := unmarshalDb(content)
@@ -101,8 +191,20 @@ func dispatcher() {
 		sort.Slice(dbKeys, func(i, j int) bool {
 			return dbKeys[i] < dbKeys[j]
 		})
-		for _, s := range dbKeys {
-			fmt.Println(s)
+		// Check if this is a basic list command or if it's a prefix list command
+		if len(os.Args) == 3 {
+			// Prefix list command
+			prefix := os.Args[2]
+			for _, s := range dbKeys {
+				if strings.HasPrefix(s, prefix) {
+					fmt.Println(s)
+				}
+			}
+			return
+		} else {
+			for _, s := range dbKeys {
+				fmt.Println(s)
+			}
 		}
 	} else if mainCommand == "delete" {
 		dataKey := os.Args[2]
