@@ -15,12 +15,40 @@ This is my personal tool for keeping secrets on my local machine.
 2. Run `go build`.
 3. Move the compiled `keyval` binary to somewhere on your PATH.
 
-## Usage
+## Basic Usage
 
 To set a key-value pair:
 
 ```shell
 keyval set your-key your-value
+```
+
+
+To get a value:
+
+```shell
+keyval get your-key
+```
+
+To list the keys you've set:
+
+```shell
+keyval list
+```
+
+
+To delete a key and its value:
+
+```shell
+keyval delete your-key
+```
+
+## Other features
+
+To list the keys you've set that have a specific prefix:
+
+```shell
+keyval list {prefix}
 ```
 
 To set a key-value pair with a sensitive value:
@@ -40,28 +68,4 @@ To set a key-value pair with stdin as the value:
 
 ```shell
 some-command | keyval set your-key
-```
-
-To get a value:
-
-```shell
-keyval get your-key
-```
-
-To list the keys you've set:
-
-```shell
-keyval list
-```
-
-To list the keys you've set that have a specific prefix:
-
-```shell
-keyval list {prefix}
-```
-
-To delete a key and its value:
-
-```shell
-keyval delete your-key
 ```
