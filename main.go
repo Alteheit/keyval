@@ -45,6 +45,12 @@ func printHelp() {
 	fmt.Println("- keyval list {prefix}: list available keys with a given prefix")
 	fmt.Println("- keyval delete {keyname}: delete a key-value pair")
 	fmt.Println("- keyval help: display this message")
+	fmt.Println("")
+	fmt.Println("Management:")
+	fmt.Println("- keyval dump: dump your encrypted database to stdout")
+	fmt.Println("- keyval dump {your-file}: dump your encrypted database to the given file")
+	fmt.Println("- keyval export-decrypt {your-file}: decrypt and dump your database to the given file")
+	fmt.Println("- keyval import-encrypt {your-file}: encrypt and import a database from the given file")
 }
 
 func dispatcher() {
@@ -230,6 +236,77 @@ func dispatcher() {
 			content = marshalDb(encryptedData)
 			writeDb(content)
 		}
+	} else if mainCommand == "dump" {
+		if len(os.Args) == 2 {
+			// To stdout
+			dbData := readDb()
+			fmt.Println(dbData)
+		} else if len(os.Args) == 3 {
+			// To a file
+			dbData := readDb()
+			filePath := os.Args[2]
+			err := os.WriteFile(filePath, []byte(dbData), 0644)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	} else if mainCommand == "export-decrypt" {
+		// Confirm decision
+		fmt.Print("This will decrypt your data. Proceed [y/N]? ")
+		r := bufio.NewReader(os.Stdin)
+		inp, err := r.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+		inp = strings.Trim(inp, "\n")
+		if !((strings.ToUpper(inp) == "Y") || (strings.ToUpper(inp) == "YES")) {
+			// If not yes, just exit
+			fmt.Println("Exiting")
+			return
+		}
+		content := readDb()
+		dbData := unmarshalDb(content)
+		decryptedData := make(map[string]string)
+		for k, v := range dbData {
+			decryptedKey := decrypt(k, key)
+			decryptedValue := decrypt(v, key)
+			decryptedData[decryptedKey] = decryptedValue
+		}
+		marshaledDecryptedData := marshalDb(decryptedData)
+		filePath := os.Args[2]
+		err = os.WriteFile(filePath, []byte(marshaledDecryptedData), 0744)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else if mainCommand == "import-encrypt" {
+		// Confirm decision
+		fmt.Print("This will overwrite your current database. Proceed [y/N]? ")
+		r := bufio.NewReader(os.Stdin)
+		inp, err := r.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+		inp = strings.Trim(inp, "\n")
+		if !((strings.ToUpper(inp) == "Y") || (strings.ToUpper(inp) == "YES")) {
+			// If not yes, just exit
+			fmt.Println("Exiting")
+			return
+		}
+		filePath := os.Args[2]
+		dataBytes, err := os.ReadFile(filePath)
+		if err != nil {
+			log.Fatal(err)
+		}
+		data := string(dataBytes)
+		decryptedData := unmarshalDb(data)
+		encryptedData := make(map[string]string)
+		for k, v := range decryptedData {
+			encryptedKey := encrypt(k, key)
+			encryptedValue := encrypt(v, key)
+			encryptedData[encryptedKey] = encryptedValue
+		}
+		marshaledEncryptedData := marshalDb(encryptedData)
+		writeDb(marshaledEncryptedData)
 	}
 }
 

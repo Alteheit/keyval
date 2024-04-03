@@ -69,3 +69,30 @@ To set a key-value pair with stdin as the value:
 ```shell
 {some-command} | keyval set {your-key}
 ```
+
+## Database management
+
+Sometimes you may wish to move a database file or re-encrypt a database with a new key.
+
+To dump a database:
+
+```shell
+# Dump the encrypted database to stdout
+keyval dump
+# Dump the encrypted database to a file
+keyval dump {your-file}
+```
+
+To export a database:
+
+```shell
+keyval export-decrypt {your-file}
+```
+
+Note that exporting will require a yes prompt because it decrypts the database.
+
+To import a database:
+
+```shell
+keyval import-encrypt {your-file}
+```
