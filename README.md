@@ -20,14 +20,14 @@ This is my personal tool for keeping secrets on my local machine.
 To set a key-value pair:
 
 ```shell
-keyval set your-key your-value
+keyval set {your-key} {your-value}
 ```
 
 
 To get a value:
 
 ```shell
-keyval get your-key
+keyval get {your-key}
 ```
 
 To list the keys you've set:
@@ -40,7 +40,7 @@ keyval list
 To delete a key and its value:
 
 ```shell
-keyval delete your-key
+keyval delete {your-key}
 ```
 
 ## Other features
@@ -54,18 +54,18 @@ keyval list {prefix}
 To set a key-value pair with a sensitive value:
 
 ```shell
-keyval sset your-key
+keyval sset {your-key}
 # You will then be prompted for a sensitive value
 ```
 
 To set a key-value pair with the contents of a file as the value:
 
 ```shell
-keyval fset your-key your-file
+keyval fset {your-key} {your-file}
 ```
 
 To set a key-value pair with stdin as the value:
 
 ```shell
-some-command | keyval set your-key
+{some-command} | keyval set {your-key}
 ```

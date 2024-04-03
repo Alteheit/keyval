@@ -38,7 +38,7 @@ func printHelp() {
 	fmt.Println("Usage:")
 	fmt.Println("- keyval set {keyName} {keyValue}: set a key-value pair")
 	fmt.Println("- keyval sset {keyName}: set a sensitive key-value pair; prompts for a secret at the terminal")
-	fmt.Println("- keyval fset {fileName}: set a key-value pair, where the value is the content of a file")
+	fmt.Println("- keyval fset {keyname} {fileName}: set a key-value pair, where the value is the content of a file")
 	fmt.Println("- some-command | keyval set your-key: set a key-value pair, where the value is from stdin")
 	fmt.Println("- keyval get {keyName}: print a value from a key")
 	fmt.Println("- keyval list: list available keys")
@@ -129,6 +129,7 @@ func dispatcher() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		file.Close()
 		// Attempt to cast contents to string
 		fileStringContents := string(b)
 		// Do not trim trailing newlines
