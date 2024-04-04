@@ -49,6 +49,7 @@ func printHelp() {
 	fmt.Println("Management:")
 	fmt.Println("- keyval dump: dump your encrypted database to stdout")
 	fmt.Println("- keyval dump {your-file}: dump your encrypted database to the given file")
+	fmt.Println("- keyval restore {your-file}: restore your database from a dump")
 	fmt.Println("- keyval export-decrypt {your-file}: decrypt and dump your database to the given file")
 	fmt.Println("- keyval import-encrypt {your-file}: encrypt and import a database from the given file")
 }
@@ -250,6 +251,28 @@ func dispatcher() {
 				log.Fatal(err)
 			}
 		}
+	} else if mainCommand == "restore" {
+		// Confirm decision
+		fmt.Print("This will overwrite your existing database. Proceed [y/N]? ")
+		r := bufio.NewReader(os.Stdin)
+		inp, err := r.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+		inp = strings.Trim(inp, "\n")
+		if !((strings.ToUpper(inp) == "Y") || (strings.ToUpper(inp) == "YES")) {
+			// If not yes, just exit
+			fmt.Println("Exiting")
+			return
+		}
+		// From a file
+		filePath := os.Args[2]
+		dataBytes, err := os.ReadFile(filePath)
+		if err != nil {
+			log.Fatal(err)
+		}
+		data := string(dataBytes)
+		writeDb(data)
 	} else if mainCommand == "export-decrypt" {
 		// Confirm decision
 		fmt.Print("This will decrypt your data. Proceed [y/N]? ")

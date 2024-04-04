@@ -83,6 +83,12 @@ keyval dump
 keyval dump {your-file}
 ```
 
+To restore a database from a file dump:
+
+```shell
+keyval restore {your-file}
+```
+
 To export a database:
 
 ```shell
