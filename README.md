@@ -4,6 +4,8 @@ Key-value (`keyval`) is a simple CLI utility to get and set keys and values.
 
 This is my personal tool for keeping secrets on my local machine.
 
+As of 2024-04-07, I consider this project done. I do not intend to make any major or minor feature additions. 
+
 ## Prerequisites
 
 - The environment variable KEYVAL_KEY needs to be set.
