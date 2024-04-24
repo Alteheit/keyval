@@ -52,6 +52,7 @@ func printHelp() {
 	fmt.Println("- keyval restore {your-file}: restore your database from a dump")
 	fmt.Println("- keyval export-decrypt {your-file}: decrypt and dump your database to the given file")
 	fmt.Println("- keyval import-encrypt {your-file}: encrypt and import a database from the given file")
+	fmt.Println("- keyval merge {file-1} {file-2} {output-file}: merge two encrypted keyval dumps. Walks you through resolving merge conflicts.")
 }
 
 func dispatcher() {
@@ -330,6 +331,119 @@ func dispatcher() {
 		}
 		marshaledEncryptedData := marshalDb(encryptedData)
 		writeDb(marshaledEncryptedData)
+	} else if mainCommand == "merge" {
+		file1Path := os.Args[2]
+		file2Path := os.Args[3]
+		outputFilePath := os.Args[4]
+		fmt.Printf("Merging %v and %v into %v\n", file1Path, file2Path, outputFilePath)
+		// Read file 1
+		file1Bytes, err := os.ReadFile(file1Path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		file1Data := string(file1Bytes)
+		unmarshaledFile1Data := unmarshalDb(file1Data)
+		decryptedFile1Data := make(map[string]string)
+		for k, v := range unmarshaledFile1Data {
+			decryptedKey := decrypt(k, key)
+			decryptedValue := decrypt(v, key)
+			decryptedFile1Data[decryptedKey] = decryptedValue
+		}
+		// Read file 2
+		file2Bytes, err := os.ReadFile(file2Path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		file2Data := string(file2Bytes)
+		unmarshaledFile2Data := unmarshalDb(file2Data)
+		decryptedFile2Data := make(map[string]string)
+		for k, v := range unmarshaledFile2Data {
+			decryptedKey := decrypt(k, key)
+			decryptedValue := decrypt(v, key)
+			decryptedFile2Data[decryptedKey] = decryptedValue
+		}
+		// Get all the keys used across both file 1 and file 2
+		var allKeys []string
+		for k, _ := range decryptedFile1Data {
+			allKeys = append(allKeys, k)
+		}
+		for k, _ := range decryptedFile2Data {
+			allKeys = append(allKeys, k)
+		}
+		keysMap := make(map[string]bool)
+		for _, k := range allKeys {
+			keysMap[k] = true
+		}
+		var keysUnion []string
+		for k, _ := range keysMap {
+			keysUnion = append(keysUnion, k)
+		}
+		// Handle merge
+		mergedData := make(map[string]string)
+		for _, k := range keysUnion {
+			// fmt.Println("Handling", k)
+			value1 := decryptedFile1Data[k]
+			value2 := decryptedFile2Data[k]
+			// fmt.Println(value1)
+			// fmt.Println(value2)
+			if value1 == value2 {
+				mergedData[k] = value1
+			} else if (value1 == "") || (value2 == "") {
+				if value1 == "" {
+					mergedData[k] = value2
+				} else if value2 == "" {
+					mergedData[k] = value1
+				}
+			} else if value1 != value2 {
+				fmt.Println("=== !!! ===")
+				fmt.Printf("Values for %v in (1) %v and (2) %v do not match.\n", k, file1Path, file2Path)
+				// Get value 1 display
+				value1Length := len(value1)
+				var value1Display string
+				if value1Length >= 80 {
+					value1Display = value1[:80]
+				} else {
+					value1Display = value1
+				}
+				// Get value 2 display
+				value2Length := len(value2)
+				var value2Display string
+				if value2Length >= 80 {
+					value2Display = value2[:80]
+				} else {
+					value2Display = value2
+				}
+				fmt.Printf("(1) %v value is: %v\n", file1Path, value1Display)
+				fmt.Printf("(2) %v value is: %v\n", file2Path, value2Display)
+				fmt.Print("Which to retain [1/2]? (1) ")
+				r := bufio.NewReader(os.Stdin)
+				inp, err := r.ReadString('\n')
+				if err != nil {
+					log.Fatal(err)
+				}
+				inp = strings.Trim(inp, "\n")
+				if (inp == "") || (inp == "1") {
+					fmt.Printf("Retaining %v\n", value1Display)
+					mergedData[k] = value1
+				} else if inp == "2" {
+					fmt.Printf("Retaining %v\n", value2Display)
+					mergedData[k] = value2
+				}
+			}
+		}
+		// Encrypt the merged data
+		encryptedMergedData := make(map[string]string)
+		for k, v := range mergedData {
+			encryptedKey := encrypt(k, key)
+			encryptedValue := encrypt(v, key)
+			encryptedMergedData[encryptedKey] = encryptedValue
+		}
+		marshaledEncryptedData := marshalDb(encryptedMergedData)
+		fmt.Printf("Writing merged data to %v\n", outputFilePath)
+		err = os.WriteFile(outputFilePath, []byte(marshaledEncryptedData), 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
