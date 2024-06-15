@@ -243,7 +243,20 @@ func dispatcher() {
 			writeDb(content)
 		}
 	} else if mainCommand == "edit" {
-		// First, read the database
+		// Confirm decision, because this will write some decrypted data to disk
+		fmt.Print("This will write the unencrypted value to disk. Proceed? [y/N] ")
+		r := bufio.NewReader(os.Stdin)
+		inp, err := r.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+		inp = strings.Trim(inp, "\n")
+		if !((strings.ToUpper(inp) == "Y") || (strings.ToUpper(inp) == "YES")) {
+			// If not yes, just exit
+			fmt.Println("Exiting")
+			return
+		}
+		// Read the database
 		dataKey := os.Args[2]
 		content := readDb()
 		dbData := unmarshalDb(content)
@@ -257,7 +270,7 @@ func dispatcher() {
 		dataValue := decryptedData[dataKey]
 		// Prepare a temporary file
 		randomBytes := make([]byte, 16)
-		_, err := rand.Read(randomBytes)
+		_, err = rand.Read(randomBytes)
 		if err != nil {
 			log.Fatal(err)
 		}
