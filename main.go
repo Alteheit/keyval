@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -21,11 +22,13 @@ import (
 )
 
 const (
-	dotfolder              = ".keyval/"
-	dbFile                 = "db"
-	keyEnvironmentVariable = "KEYVAL_KEY"
-	recordSeparator        = "\x1e"
-	unitSeparator          = "\x1f"
+	dotfolder                 = ".keyval/"
+	dbFile                    = "db"
+	keyEnvironmentVariable    = "KEYVAL_KEY"
+	editorEnvironmentVariable = "EDITOR"
+	recordSeparator           = "\x1e"
+	unitSeparator             = "\x1f"
+	ttyFd                     = "/dev/tty"
 )
 
 func main() {
@@ -38,12 +41,13 @@ func printHelp() {
 	fmt.Println("Usage:")
 	fmt.Println("- keyval set {keyName} {keyValue}: set a key-value pair")
 	fmt.Println("- keyval sset {keyName}: set a sensitive key-value pair; prompts for a secret at the terminal")
-	fmt.Println("- keyval fset {keyname} {fileName}: set a key-value pair, where the value is the content of a file")
+	fmt.Println("- keyval fset {keyName} {fileName}: set a key-value pair, where the value is the content of a file")
 	fmt.Println("- some-command | keyval set your-key: set a key-value pair, where the value is from stdin")
 	fmt.Println("- keyval get {keyName}: print a value from a key")
 	fmt.Println("- keyval list: list available keys")
 	fmt.Println("- keyval list {prefix}: list available keys with a given prefix")
-	fmt.Println("- keyval delete {keyname}: delete a key-value pair")
+	fmt.Println("- keyval delete {keyName}: delete a key-value pair")
+	fmt.Println("- keyval edit {keyName}: open the contents of a key-value pair using a terminal text editor")
 	fmt.Println("- keyval help: display this message")
 	fmt.Println("")
 	fmt.Println("Management:")
@@ -238,6 +242,76 @@ func dispatcher() {
 			content = marshalDb(encryptedData)
 			writeDb(content)
 		}
+	} else if mainCommand == "edit" {
+		// First, read the database
+		dataKey := os.Args[2]
+		content := readDb()
+		dbData := unmarshalDb(content)
+		decryptedData := make(map[string]string)
+		for k, v := range dbData {
+			decryptedKey := decrypt(k, key)
+			decryptedValue := decrypt(v, key)
+			decryptedData[decryptedKey] = decryptedValue
+		}
+		// Fetch the value in question
+		dataValue := decryptedData[dataKey]
+		// Prepare a temporary file
+		randomBytes := make([]byte, 16)
+		_, err := rand.Read(randomBytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+		randomString := hex.EncodeToString(randomBytes)
+		tmpFileName := fmt.Sprintf("%v.keyval", randomString)
+		userHomeDir, err := os.UserHomeDir()
+		if err != nil {
+			log.Fatal(err)
+		}
+		tmpFilePath := filepath.Join(userHomeDir, dotfolder, tmpFileName)
+		err = os.WriteFile(tmpFilePath, []byte(dataValue), 0o600)
+		if err != nil {
+			os.Remove(tmpFilePath)
+			log.Fatal(err)
+		}
+		// Check if there's an EDITOR envvar
+		editor := os.Getenv("EDITOR")
+		if editor == "" {
+			editor = "vi"
+		}
+		// Open the temporary file in the editor
+		tty, err := os.OpenFile(ttyFd, os.O_RDWR, 0)
+		if err != nil {
+			os.Remove(tmpFilePath)
+			log.Fatal(err)
+		}
+		defer tty.Close()
+		cmd := exec.Command(editor, tmpFilePath)
+		cmd.Stdin = tty
+		cmd.Stdout = tty
+		cmd.Stderr = tty
+		err = cmd.Run()
+		if err != nil {
+			os.Remove(tmpFilePath)
+			log.Fatal(err)
+		}
+		// Read the contents of the temporary file and delete it
+		b, err := os.ReadFile(tmpFilePath)
+		if err != nil {
+			os.Remove(tmpFilePath)
+			log.Fatal(err)
+		}
+		newValue := string(b)
+		os.Remove(tmpFilePath)
+		// Save the new data
+		decryptedData[dataKey] = newValue
+		encryptedData := make(map[string]string)
+		for k, v := range decryptedData {
+			encryptedKey := encrypt(k, key)
+			encryptedValue := encrypt(v, key)
+			encryptedData[encryptedKey] = encryptedValue
+		}
+		content = marshalDb(encryptedData)
+		writeDb(content)
 	} else if mainCommand == "dump" {
 		if len(os.Args) == 2 {
 			// To stdout

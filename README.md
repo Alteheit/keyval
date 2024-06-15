@@ -72,6 +72,14 @@ To set a key-value pair with stdin as the value:
 {some-command} | keyval set {your-key}
 ```
 
+To open the contents of a key-value pair in your terminal text editor:
+
+```shell
+keyval edit {your-key}
+```
+
+This will attempt to launch a program specified by an environment variable `EDITOR`. If no such variable is found, it will attempt to launch `vi`.
+
 ## Database management
 
 Sometimes you may wish to move a database file or re-encrypt a database with a new key.
