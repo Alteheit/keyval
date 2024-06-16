@@ -44,8 +44,8 @@ func printHelp() {
 	fmt.Println("- keyval fset {keyName} {fileName}: set a key-value pair, where the value is the content of a file")
 	fmt.Println("- some-command | keyval set your-key: set a key-value pair, where the value is from stdin")
 	fmt.Println("- keyval get {keyName}: print a value from a key")
-	fmt.Println("- keyval list: list available keys")
-	fmt.Println("- keyval list {prefix}: list available keys with a given prefix")
+	fmt.Println("- keyval {list|ls}: list available keys")
+	fmt.Println("- keyval {list|ls} {prefix}: list available keys with a given prefix")
 	fmt.Println("- keyval delete {keyName}: delete a key-value pair")
 	fmt.Println("- keyval edit {keyName}: open the contents of a key-value pair using a terminal text editor")
 	fmt.Println("- keyval help: display this message")
@@ -193,7 +193,7 @@ func dispatcher() {
 		// Trim trailing newlines
 		stringToPrint = strings.Trim(stringToPrint, "\n")
 		fmt.Println(stringToPrint)
-	} else if mainCommand == "list" {
+	} else if (mainCommand == "list") || (mainCommand == "ls") {
 		content := readDb()
 		dbData := unmarshalDb(content)
 		dbKeys := []string{}
