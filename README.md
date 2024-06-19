@@ -35,7 +35,10 @@ keyval get {your-key}
 To list the keys you've set:
 
 ```shell
+# Main command
 keyval list
+# Or, as an alias
+keyval ls
 ```
 
 
@@ -45,11 +48,18 @@ To delete a key and its value:
 keyval delete {your-key}
 ```
 
+To rename a key:
+
+```shell
+keyval mv {old-key-name} {new-key-name}
+```
+
 ## Other features
 
 To list the keys you've set that have a specific prefix:
 
 ```shell
+# Also works with `keyval ls`
 keyval list {prefix}
 ```
 

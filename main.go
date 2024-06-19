@@ -48,6 +48,7 @@ func printHelp() {
 	fmt.Println("- keyval {list|ls} {prefix}: list available keys with a given prefix")
 	fmt.Println("- keyval delete {keyName}: delete a key-value pair")
 	fmt.Println("- keyval edit {keyName}: open the contents of a key-value pair using a terminal text editor")
+	fmt.Println("- keyval mv {old-key-name} {new-key-name}: move the value of an old key to a new key")
 	fmt.Println("- keyval help: display this message")
 	fmt.Println("")
 	fmt.Println("Management:")
@@ -218,6 +219,31 @@ func dispatcher() {
 			for _, s := range dbKeys {
 				fmt.Println(s)
 			}
+		}
+	} else if mainCommand == "mv" {
+		oldKey := os.Args[2]
+		newKey := os.Args[3]
+		content := readDb()
+		dbData := unmarshalDb(content)
+		decryptedData := make(map[string]string)
+		for k, v := range dbData {
+			decryptedKey := decrypt(k, key)
+			decryptedValue := decrypt(v, key)
+			decryptedData[decryptedKey] = decryptedValue
+		}
+		decryptedData[newKey] = decryptedData[oldKey]
+		delete(decryptedData, oldKey)
+		encryptedData := make(map[string]string)
+		for k, v := range decryptedData {
+			encryptedKey := encrypt(k, key)
+			encryptedValue := encrypt(v, key)
+			encryptedData[encryptedKey] = encryptedValue
+		}
+		if len(encryptedData) == 0 {
+			writeDb("")
+		} else {
+			content = marshalDb(encryptedData)
+			writeDb(content)
 		}
 	} else if mainCommand == "delete" {
 		dataKey := os.Args[2]
